@@ -1,0 +1,1133 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SEARCHCLAW · AI 智能助手</title>
+  <style>
+    :root{
+      --bg:#faf9f5;--bg-alt:#f4f2ed;--ink:#26221e;--ink-soft:#6c655d;--muted:#8a7f73;
+      --gold:#c46c1d;--gold-light:#e7a931;--gold-pale:#f5d9a0;--gold-deep:#a95718;
+      --orange:#d97920;--orange-light:#f3c24a;--orange-glow:rgba(235,158,47,.13);
+      --panel:rgba(255,255,255,.85);--line:rgba(186,125,48,.22);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth;overflow-x:hidden}
+    body{
+      background:var(--bg);color:var(--ink);
+      font-family:"Microsoft YaHei","PingFang SC","Noto Sans SC",system-ui,sans-serif;
+      line-height:1.6;overflow-x:hidden;
+      background-image:radial-gradient(ellipse at 50% 0%,rgba(245,220,160,.35),transparent 55%);
+    }
+
+    /* ===== Ambient particle canvas ===== */
+    #particles{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.6}
+
+    /* ===== Noise overlay ===== */
+    .noise{position:fixed;inset:0;opacity:.035;pointer-events:none;z-index:500;
+      background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
+    }
+
+    /* ===== Golden light trail (global) ===== */
+    .light-trail-global{
+      position:fixed;z-index:1;pointer-events:none;
+      top:50%;left:-10%;width:120%;height:2px;
+      background:linear-gradient(90deg,transparent 0%,var(--gold-light) 30%,var(--orange) 50%,var(--gold-light) 70%,transparent 100%);
+      filter:drop-shadow(0 0 8px rgba(231,169,49,.5)) drop-shadow(0 0 20px rgba(231,169,49,.2));
+      transform:translateY(-50%);
+      animation:global-trail 12s ease-in-out infinite;
+      opacity:.45;
+    }
+    @keyframes global-trail{
+      0%,15%{transform:translateY(-50%) translateX(-40%);opacity:0}
+      25%{opacity:.5}
+      50%{transform:translateY(-50%) translateX(0);opacity:.45}
+      75%{opacity:.5}
+      85%,100%{transform:translateY(-50%) translateX(40%);opacity:0}
+    }
+
+    /* ===== Top bar ===== */
+    .topbar{
+      position:fixed;top:0;left:0;right:0;z-index:100;
+      display:flex;align-items:center;justify-content:space-between;
+      max-width:1200px;margin:0 auto;padding:16px 28px;
+      background:rgba(250,249,245,.75);backdrop-filter:blur(14px);
+      border-bottom:1px solid rgba(186,125,48,.08);
+    }
+    .brand{
+      font-size:15px;font-weight:800;letter-spacing:1px;color:var(--ink);
+    }
+    .brand span{color:var(--gold);font-weight:900}
+    .brand b{color:var(--gold-deep);font-weight:500;font-size:11px;letter-spacing:2px;margin-left:6px}
+    .status-pill{
+      font-size:11px;color:var(--gold-deep);
+      border:1px solid rgba(196,108,29,.25);background:rgba(245,217,160,.25);
+      padding:6px 14px;border-radius:999px;display:flex;align-items:center;gap:8px;
+    }
+    .status-pill i{
+      width:6px;height:6px;background:var(--orange);border-radius:50%;
+      box-shadow:0 0 8px var(--orange-light);animation:pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot{0%,100%{opacity:.6;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}
+
+    /* ===== Hero ===== */
+    .hero{
+      min-height:100vh;position:relative;isolation:isolate;overflow:hidden;
+      display:flex;align-items:center;justify-content:center;
+      padding:80px 28px;
+    }
+
+    /* Cat + Icon Network */
+    .icon-network{
+      position:absolute;inset:0;display:grid;place-items:center;
+      pointer-events:none;z-index:2;
+    }
+    .network-svg{width:min(900px,80vw);height:min(600px,60vh);overflow:visible}
+    .network-svg line{
+      stroke:var(--gold);stroke-width:1.2;opacity:.35;
+      stroke-dasharray:4 6;animation:network-flow 3s linear infinite;
+    }
+    @keyframes network-flow{to{stroke-dashoffset:-20}}
+    .network-svg .net-icon{
+      fill:none;stroke:var(--gold);stroke-width:1.8;
+      opacity:.7;animation:icon-float 6s ease-in-out infinite;
+    }
+    .network-svg .net-icon:nth-child(even){animation-delay:-2s}
+    .network-svg .net-icon:nth-child(3n){animation-delay:-4s}
+    @keyframes icon-float{50%{transform:translateY(-6px)}}
+
+    /* Central cat */
+    .hero-cat{
+      position:relative;z-index:3;
+      width:96px;height:110px;
+      animation:cat-breathe 4s ease-in-out infinite;
+    }
+    @keyframes cat-breathe{50%{transform:translateY(-10px)}}
+    .cat-body{
+      position:absolute;bottom:0;left:20px;width:56px;height:62px;
+      border-radius:50% 50% 40% 40%;
+      background:linear-gradient(160deg,#f0a040,#d07020);
+      box-shadow:0 8px 24px rgba(180,100,30,.18);
+    }
+    .cat-head{
+      position:absolute;top:0;left:16px;width:64px;height:54px;
+      border-radius:50% 50% 45% 45%;
+      background:linear-gradient(160deg,#f4b048,#e08030);
+      transform-origin:50% 90%;
+      animation:cat-look 8s ease-in-out infinite;
+    }
+    @keyframes cat-look{
+      0%,60%{transform:rotate(0)}70%,85%{transform:rotate(-22deg)}100%{transform:rotate(0)}
+    }
+    .cat-ear{position:absolute;top:-8px;border-style:solid;border-width:0 11px 16px}
+    .cat-ear.l{left:4px;border-color:transparent transparent #e89030}
+    .cat-ear.r{right:4px;border-color:transparent transparent #da8025}
+    .cat-face{position:absolute;top:20px;left:14px;width:36px;height:7px;
+      background:
+        radial-gradient(circle at 5px 3px,#fff 2px,var(--ink) 2.8px,transparent 3.5px),
+        radial-gradient(circle at 31px 3px,#fff 2px,var(--ink) 2.8px,transparent 3.5px);
+    }
+    .cat-mouth{
+      position:absolute;top:32px;left:28px;width:8px;height:5px;
+      border-bottom:2px solid var(--ink);border-radius:0 0 50% 50%;
+    }
+    .cat-tail{
+      position:absolute;right:-4px;bottom:18px;
+      width:36px;height:44px;
+      border:8px solid #c86818;border-left:0;border-bottom:0;
+      border-radius:0 40px 0 0;transform-origin:bottom left;
+      animation:tail-sway 1.2s ease-in-out infinite alternate;
+    }
+    @keyframes tail-sway{to{transform:rotate(25deg)}}
+    .cat-paw{position:absolute;bottom:-6px;width:10px;height:18px;border-radius:0 0 8px 8px;background:#c06018}
+    .cat-paw.l{left:26px}.cat-paw.r{left:50px}
+
+    /* Hero content */
+    .hero-content{
+      position:relative;z-index:5;text-align:center;
+      max-width:720px;
+    }
+    .hero-kicker{
+      font-size:11px;letter-spacing:3px;color:var(--gold-deep);
+      text-transform:uppercase;margin-bottom:18px;
+      opacity:0;animation:fade-up .8s .3s forwards;
+    }
+    .hero-title{
+      font-size:clamp(48px,7vw,88px);
+      line-height:1.05;letter-spacing:-3px;
+      font-weight:900;color:var(--ink);
+      margin-bottom:22px;
+      opacity:0;animation:fade-up .9s .5s forwards;
+    }
+    .hero-title .grad{
+      background:linear-gradient(120deg,var(--gold-deep),var(--gold-light) 60%,var(--orange));
+      -webkit-background-clip:text;background-clip:text;color:transparent;
+    }
+    .hero-sub{
+      font-size:17px;color:var(--ink-soft);line-height:1.8;
+      max-width:540px;margin:0 auto 36px;
+      opacity:0;animation:fade-up .9s .7s forwards;
+    }
+    .hero-sub strong{color:var(--ink);font-weight:600}
+    .hero-actions{
+      display:flex;gap:14px;justify-content:center;flex-wrap:wrap;
+      opacity:0;animation:fade-up .9s .9s forwards;
+    }
+    @keyframes fade-up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+
+    /* Buttons */
+    .btn{
+      font:inherit;cursor:pointer;border:none;border-radius:8px;
+      font-weight:700;font-size:14px;
+      transition:transform .25s,box-shadow .25s,background .25s;
+    }
+    .btn:active{transform:scale(.97)}
+    .btn-primary{
+      background:var(--orange);color:#fff;
+      padding:14px 28px;
+      box-shadow:0 8px 24px rgba(217,121,32,.22);
+    }
+    .btn-primary:hover{background:var(--gold-deep);transform:translateY(-2px);box-shadow:0 12px 32px rgba(217,121,32,.3)}
+    .btn-ghost{
+      background:transparent;color:var(--gold-deep);
+      padding:14px 20px;
+      border:1px solid rgba(196,108,29,.25);
+    }
+    .btn-ghost:hover{background:rgba(245,217,160,.2);transform:translateY(-2px)}
+    .btn-icon{
+      display:inline-flex;align-items:center;gap:8px;
+    }
+    .btn-icon span{font-size:18px}
+
+    /* Scroll indicator */
+    .scroll-hint{
+      position:absolute;bottom:28px;left:50%;transform:translateX(-50%);
+      display:flex;flex-direction:column;align-items:center;gap:8px;
+      color:var(--muted);font-size:10px;letter-spacing:2px;
+      animation:fade-up 1s 1.5s forwards;opacity:0;
+    }
+    .scroll-hint::after{
+      content:'';width:1px;height:36px;
+      background:linear-gradient(var(--gold-light),transparent);
+      animation:scroll-bounce 2s ease-in-out infinite;
+    }
+    @keyframes scroll-bounce{50%{transform:translateY(8px);opacity:.4}}
+
+    /* ===== Section: Capabilities ===== */
+    .section{
+      position:relative;z-index:5;
+      max-width:1200px;margin:0 auto;padding:0 28px;
+    }
+    .section-head{
+      text-align:center;
+      padding:100px 0 60px;
+    }
+    .section-eyebrow{
+      font-size:11px;letter-spacing:2.5px;color:var(--gold-deep);
+      text-transform:uppercase;margin-bottom:10px;
+    }
+    .section-title{
+      font-size:clamp(32px,5vw,52px);
+      font-weight:900;letter-spacing:-1.5px;line-height:1.12;
+      color:var(--ink);max-width:600px;margin:0 auto 18px;
+    }
+    .section-desc{
+      font-size:15px;color:var(--ink-soft);max-width:480px;
+      margin:0 auto;line-height:1.7;
+    }
+
+    /* Module cards */
+    .modules-grid{
+      display:grid;grid-template-columns:repeat(3,1fr);gap:20px;
+      padding-bottom:120px;
+    }
+    .mod-card{
+      position:relative;overflow:hidden;
+      border:1px solid var(--line);border-radius:16px;
+      background:var(--panel);
+      padding:36px 28px 28px;
+      cursor:pointer;
+      transition:transform .45s cubic-bezier(.16,1,.3,1),box-shadow .45s,border-color .45s;
+      text-align:left;
+    }
+    .mod-card:hover{
+      transform:translateY(-10px);
+      box-shadow:0 24px 60px rgba(140,90,30,.12);
+      border-color:rgba(196,108,29,.45);
+    }
+    .mod-card::before{
+      content:'';position:absolute;top:-60px;right:-60px;
+      width:180px;height:180px;border-radius:50%;
+      background:radial-gradient(circle,var(--gold-pale),transparent 70%);
+      opacity:0;transition:opacity .5s;
+    }
+    .mod-card:hover::before{opacity:.35}
+    .mod-num{
+      font-size:11px;font-weight:700;letter-spacing:1px;
+      color:var(--gold-deep);font-family:ui-monospace,monospace;
+    }
+    .mod-title{
+      font-size:24px;font-weight:800;color:var(--ink);
+      margin:20px 0 10px;letter-spacing:-0.5px;
+    }
+    .mod-desc{
+      font-size:13px;color:var(--ink-soft);line-height:1.7;
+      max-width:260px;
+    }
+    .mod-arrow{
+      position:absolute;bottom:22px;left:28px;
+      font-size:12px;color:var(--ink-soft);
+      display:flex;align-items:center;gap:10px;
+    }
+    .mod-arrow b{font-size:20px;color:var(--gold);transition:transform .25s}
+    .mod-card:hover .mod-arrow b{transform:translateX(8px)}
+
+    /* ===== Quality Loop ===== */
+    .quality-loop{
+      border-top:1px solid var(--line);
+      padding:100px 0 120px;
+    }
+    .loop-path{
+      display:grid;grid-template-columns:repeat(5,1fr);
+      position:relative;margin-top:60px;
+    }
+    .loop-path::before{
+      content:'';position:absolute;
+      left:8%;right:8%;top:18px;height:2px;
+      background:linear-gradient(90deg,var(--gold-light),var(--orange),var(--gold-light));
+    }
+    .loop-step{
+      position:relative;padding-right:20px;
+    }
+    .loop-step::before{
+      content:'';position:absolute;top:10px;
+      width:16px;height:16px;border-radius:50%;
+      background:var(--bg);border:2.5px solid var(--gold);
+      box-shadow:0 0 16px rgba(217,121,32,.25);
+    }
+    .loop-step-label{
+      font-size:10px;color:var(--gold-deep);
+      font-family:ui-monospace,monospace;letter-spacing:1px;
+      display:block;margin-bottom:6px;
+    }
+    .loop-step-title{
+      font-size:14px;font-weight:700;color:var(--ink);
+      display:block;margin-bottom:6px;
+    }
+    .loop-step-desc{
+      font-size:12px;color:var(--ink-soft);line-height:1.6;
+      max-width:150px;
+    }
+
+    /* ===== CTA Section ===== */
+    .cta-section{
+      position:relative;border:1px solid rgba(196,108,29,.25);
+      border-radius:20px;overflow:hidden;
+      padding:80px 70px;margin-bottom:100px;
+      background:linear-gradient(120deg,#fff7e4,#f5deb0);
+      box-shadow:0 16px 40px rgba(140,90,30,.08);
+    }
+    .cta-section::before{
+      content:'';position:absolute;inset:0;
+      background:
+        radial-gradient(circle at 85% 50%,rgba(217,121,32,.08) 0 12%,transparent 13% 22%),
+        radial-gradient(circle at 85% 50%,rgba(217,121,32,.06) 23% 32%,transparent 33% 42%),
+        radial-gradient(circle at 85% 50%,rgba(217,121,32,.04) 43% 52%,transparent 53%);
+      pointer-events:none;
+    }
+    .cta-title{
+      font-size:clamp(28px,4vw,44px);
+      font-weight:900;color:var(--ink);letter-spacing:-1px;
+      line-height:1.15;margin-bottom:18px;position:relative;
+    }
+    .cta-desc{
+      font-size:15px;color:var(--ink-soft);max-width:460px;
+      line-height:1.7;margin-bottom:28px;position:relative;
+    }
+
+    /* ===== Footer ===== */
+    .footer{
+      border-top:1px solid var(--line);
+      padding:22px 28px;
+      display:flex;justify-content:space-between;
+      font-size:11px;color:var(--muted);
+      position:relative;z-index:5;
+    }
+
+    /* ===== Modal (page mode) ===== */
+    .modal{
+      position:fixed;z-index:200;inset:0;
+      background:rgba(71,49,28,.25);
+      display:grid;place-items:center;
+      padding:20px;
+      opacity:0;pointer-events:none;
+      transition:opacity .3s;
+      backdrop-filter:blur(8px);
+    }
+    .modal.open{opacity:1;pointer-events:auto}
+    .modal-box{
+      width:min(1200px,100%);max-height:94vh;overflow:auto;
+      background:#fffdf9;border:1px solid #e3bc84;border-radius:18px;
+      box-shadow:0 28px 80px rgba(65,40,14,.18);
+      transform:translateY(20px) scale(.98);
+      transition:transform .4s cubic-bezier(.16,1,.3,1);
+    }
+    .modal.open .modal-box{transform:none}
+    .modal-header{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:16px 24px;
+      border-bottom:1px solid #f0dcc0;
+      position:sticky;top:0;z-index:10;
+      background:rgba(255,253,248,.92);backdrop-filter:blur(12px);
+    }
+    .modal-header h3{font-size:16px;font-weight:700;color:var(--ink)}
+    .btn-back{
+      font-size:12px;padding:8px 14px;border-radius:999px;
+      background:transparent;color:var(--gold-deep);
+      border:1px solid #ead1ad;cursor:pointer;
+      transition:background .2s;
+    }
+    .btn-back:hover{background:rgba(245,217,160,.25)}
+
+    .modal-body{padding:24px}
+    .screen{
+      min-height:500px;border-radius:14px;
+      padding:32px;
+      background:linear-gradient(140deg,#fffaf0,#f5e0c0);
+    }
+
+    /* Capability grid */
+    .cap-grid{
+      display:grid;grid-template-columns:repeat(3,1fr);gap:16px;
+      margin-top:20px;
+    }
+    .cap-item{
+      border:1px solid rgba(186,125,48,.2);border-radius:12px;
+      overflow:hidden;background:#fff;text-align:left;
+      cursor:pointer;
+      transition:transform .4s cubic-bezier(.16,1,.3,1),box-shadow .4s;
+    }
+    .cap-item:hover{transform:translateY(-8px);box-shadow:0 18px 36px rgba(130,80,25,.14)}
+    .cap-item img{
+      width:100%;height:160px;display:block;object-fit:cover;object-position:top;
+      border-bottom:1px solid #f0dfc7;transition:transform .6s;
+    }
+    .cap-item:hover img{transform:scale(1.05)}
+    .cap-info{padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
+    .cap-info b{font-size:14px;color:var(--ink)}
+    .cap-info small{display:block;color:var(--gold-deep);font-size:10px;letter-spacing:1px;margin-top:3px}
+    .cap-info span{color:var(--orange);font-size:16px}
+
+    /* Detail layout */
+    .detail-layout{display:grid;grid-template-columns:1fr 220px;gap:20px;align-items:start}
+    .detail-main{
+      min-height:560px;display:grid;place-items:center;
+      padding:20px;border:1px solid #ecd9bc;border-radius:12px;
+      background:rgba(255,255,255,.7);
+    }
+    .detail-main img{max-height:580px;max-width:100%;object-fit:contain;
+      box-shadow:0 14px 32px rgba(92,60,24,.1)}
+    .detail-side{position:sticky;top:80px;display:grid;gap:10px}
+    .detail-side h4{font-size:11px;color:var(--gold-deep);letter-spacing:1px;margin:0 0 4px}
+    .side-btn{
+      display:grid;grid-template-columns:48px 1fr;gap:10px;align-items:center;
+      padding:8px;border:1px solid transparent;border-radius:10px;
+      background:transparent;cursor:pointer;text-align:left;
+      color:var(--ink-soft);transition:background .2s,border-color .2s;
+    }
+    .side-btn img{width:48px;height:38px;object-fit:cover;object-position:top;border-radius:5px}
+    .side-btn b{font-size:12px}
+    .side-btn small{display:block;margin-top:3px;font-size:9px;color:var(--muted)}
+    .side-btn:hover,.side-btn.active{background:#fff5e4;border-color:#eacb9c;color:var(--gold-deep)}
+
+    .detail-footer{
+      display:flex;justify-content:space-between;align-items:center;
+      margin-top:20px;padding-top:18px;border-top:1px solid #ead5b4;
+    }
+    .detail-progress{font-size:12px;color:var(--muted)}
+    .btn-next{
+      display:flex;align-items:center;gap:12px;
+      padding:12px 18px 12px 20px;border-radius:10px;
+      background:var(--orange);color:#fff;
+      box-shadow:0 8px 18px rgba(196,104,22,.2);
+      cursor:pointer;border:none;font:inherit;font-weight:700;
+    }
+    .btn-next:hover{background:var(--gold-deep)}
+    .btn-next small{opacity:.7;font-size:10px}
+    .btn-next span{font-size:20px}
+
+    /* Case transition */
+    .case-trans{
+      min-height:520px;display:grid;place-items:center;text-align:center;
+      position:relative;overflow:hidden;
+      background:radial-gradient(circle at center,#fff7df 0 8%,#f2cd82 9%,#fbf8ef 10% 25%,#ead7b3 26%,#fffdf8 27%);
+    }
+    .case-orbs{position:relative;z-index:1;width:min(680px,90vw);height:340px}
+    .case-orbs svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+    .case-orbs line{stroke:var(--gold);stroke-width:1.5;stroke-dasharray:6 7;animation:net-flow 2s linear infinite}
+    @keyframes net-flow{to{stroke-dashoffset:-26}}
+    .source-node{
+      position:absolute;z-index:2;
+      display:flex;align-items:center;gap:10px;
+      min-width:130px;padding:12px 14px;
+      border:1px solid rgba(204,120,27,.3);border-radius:12px;
+      background:rgba(255,253,248,.92);
+      box-shadow:0 10px 24px rgba(160,94,22,.1);
+      font-size:12px;font-weight:700;color:var(--gold-deep);
+      animation:node-appear .8s both;
+    }
+    .source-node i{
+      width:28px;height:28px;display:grid;place-items:center;
+      border-radius:8px;background:#fbe2ad;color:var(--orange);font-style:normal;font-size:14px;
+    }
+    .source-node small{display:block;margin-top:2px;color:var(--muted);font-size:9px;font-weight:400}
+    .source-node.qa{left:0;top:20px;animation-delay:.1s}
+    .source-node.iq{right:0;top:20px;animation-delay:.3s}
+    .source-node.insp{left:20px;bottom:20px;animation-delay:.5s}
+    .source-node.cust{right:20px;bottom:20px;animation-delay:.7s}
+    @keyframes node-appear{from{opacity:0;transform:scale(.5) translateY(20px)}to{opacity:1;transform:none}}
+    .center-orb{
+      position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+      width:120px;height:120px;border-radius:40% 60% 55% 45%;
+      display:grid;place-items:center;color:#fff;
+      background:linear-gradient(135deg,#f5ba43,#c96519);
+      box-shadow:0 16px 36px rgba(190,102,19,.22);
+      animation:orb-pulse 2.5s ease-in-out infinite;
+    }
+    .center-orb::before{content:'';position:absolute;inset:12px;border:1px solid rgba(255,255,255,.55);border-radius:inherit}
+    .center-orb span{font-size:32px;position:relative;z-index:1}
+    @keyframes orb-pulse{50%{transform:translate(-50%,-50%) translateY(-10px) rotate(4deg)}}
+
+    /* Dashboard */
+    .dash-top{display:flex;justify-content:space-between;gap:20px;align-items:start}
+    .dash-title{font-size:28px;font-weight:800;color:var(--ink);margin:4px 0}
+    .dash-stats{display:flex;gap:10px;flex-shrink:0}
+    .dash-stat{
+      padding:10px 14px;background:rgba(255,255,255,.7);border-radius:10px;
+      font-size:11px;text-align:center;
+    }
+    .dash-stat b{display:block;font-size:22px;color:var(--gold-deep)}
+    .video-wrap{
+      margin-top:24px;border-radius:12px;overflow:hidden;
+      border:1px solid rgba(186,125,48,.2);
+      background:transparent;box-shadow:0 14px 32px rgba(80,50,15,.1);
+    }
+    .video-wrap video{width:100%;display:block;max-height:500px}
+    .video-play-btn{
+      display:flex;align-items:center;gap:10px;
+      padding:14px 24px;border-radius:999px;
+      background:var(--orange);color:#fff;
+      border:none;font:inherit;font-weight:700;font-size:14px;
+      cursor:pointer;box-shadow:0 10px 22px rgba(196,104,22,.22);
+      margin:18px auto 0;transition:background .2s,transform .2s;
+    }
+    .video-play-btn:hover{background:var(--gold-deep);transform:translateY(-2px)}
+    .video-play-btn span{font-size:16px}
+    .video-caption{text-align:center;margin:10px 0 0;font-size:12px;color:var(--muted)}
+
+    .next-module{
+      display:flex;align-items:center;justify-content:space-between;
+      margin-top:24px;padding-top:18px;border-top:1px solid #ead5b4;
+      font-size:13px;color:var(--ink-soft);
+    }
+
+    /* Inspection transition */
+    .insp-trans{
+      min-height:540px;display:grid;place-items:center;
+      position:relative;overflow:hidden;
+      background:radial-gradient(circle at 50% 47%,#fff4d7 0 7%,#f8d07c 8%,#fff9ec 9% 23%,#eddcb9 24%,#fffdf8 25%);
+    }
+    .insp-network{position:relative;width:min(720px,90vw);height:360px}
+    .insp-network svg{position:absolute;inset:0;width:100%;height:100%}
+    .insp-network line{stroke:var(--gold);stroke-width:1.5;stroke-dasharray:5 6;animation:net-flow 1.5s linear infinite}
+    .scan-ring{
+      position:absolute;left:50%;top:90px;transform:translateX(-50%);
+      width:140px;height:140px;border:2px solid #ca721d;border-radius:50%;
+      display:grid;place-items:center;
+      background:rgba(255,253,248,.8);
+      box-shadow:0 0 0 16px rgba(229,159,44,.07),0 0 0 40px rgba(229,159,44,.04);
+      animation:scan-breathe 2.5s ease-in-out infinite;
+    }
+    .scan-ring::after{
+      content:'';position:absolute;inset:14px;
+      border-top:3px solid #e29a32;border-radius:50%;
+      animation:spin 2s linear infinite;
+    }
+    .scan-ring b{position:relative;z-index:1;font-size:11px;color:var(--gold-deep);letter-spacing:1px}
+    .scan-ring span{position:absolute;bottom:32px;z-index:1;color:var(--muted);font-size:9px}
+    @keyframes scan-breathe{50%{box-shadow:0 0 0 24px rgba(229,159,44,.05),0 0 0 56px rgba(229,159,44,.025)}}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .scan-node{
+      position:absolute;z-index:2;width:120px;
+      padding:10px 8px;border:1px solid rgba(202,114,28,.3);border-radius:10px;
+      text-align:center;background:rgba(255,253,248,.92);
+      color:var(--gold-deep);font-size:12px;font-weight:700;
+      box-shadow:0 8px 18px rgba(141,83,19,.08);
+      animation:node-appear .8s both;
+    }
+    .scan-node small{display:block;margin-top:4px;color:var(--muted);font-size:9px;font-weight:400}
+    .scan-node.s1{left:20px;top:10px}.scan-node.s2{right:20px;top:10px;animation-delay:.18s}
+    .scan-node.s3{left:40px;bottom:14px;animation-delay:.36s}.scan-node.s4{right:40px;bottom:14px;animation-delay:.54s}
+    .insp-welcome{position:relative;z-index:2;text-align:center;margin-top:-8px}
+    .insp-welcome h3{font-size:30px;font-weight:800;color:var(--ink);margin:8px 0 4px}
+    .insp-welcome p{color:var(--ink-soft);font-size:12px}
+    .insp-bar{
+      width:min(280px,65vw);height:4px;margin:16px auto 0;
+      border-radius:999px;overflow:hidden;background:rgba(195,114,27,.12);
+    }
+    .insp-bar::before{
+      content:'';display:block;width:100%;height:100%;
+      transform:translateX(-100%);border-radius:inherit;
+      background:linear-gradient(90deg,var(--gold-deep),var(--orange-light),var(--gold-deep));
+      animation:bar-load 3s cubic-bezier(.2,.7,.2,1) forwards;
+    }
+    @keyframes bar-load{to{transform:translateX(0)}}
+
+    /* Ending */
+    .ending{
+      min-height:100vh;display:grid;place-items:center;
+      position:relative;overflow:hidden;isolation:isolate;
+      background:radial-gradient(circle at 50% 42%,#fff 0 9%,#f5f2e9 32%,#e9edf0 100%);
+    }
+    .ending-stage{position:relative;width:min(880px,100%);height:600px;overflow:hidden}
+    .ending-stage::after{
+      content:'';position:absolute;left:4%;right:4%;bottom:140px;
+      height:1px;background:linear-gradient(90deg,transparent,#c68b52 25%,#e0a25e 50%,#c68b52 75%,transparent);
+      opacity:.5;
+    }
+    .end-links{position:absolute;inset:70px 8% 130px}
+    .end-links path{fill:none;stroke:#be7a39;stroke-width:1.3;stroke-dasharray:4 5;animation:net-flow 2s linear infinite}
+    .end-icon{
+      position:absolute;z-index:1;width:78px;height:78px;
+      border:2px solid #bc7635;border-radius:14px;
+      display:grid;place-items:center;
+      color:var(--gold-deep);font:700 26px Georgia,serif;
+      background:rgba(255,255,255,.3);
+      animation:icon-breathe 3.5s ease-in-out infinite;
+    }
+    .end-icon:nth-of-type(1){left:18%;top:90px;border-radius:50%}
+    .end-icon:nth-of-type(2){right:18%;top:70px}
+    .end-icon:nth-of-type(3){left:24%;bottom:160px;transform:rotate(45deg)}
+    .end-icon:nth-of-type(3) span{transform:rotate(-45deg)}
+    .end-icon:nth-of-type(4){right:24%;bottom:148px;border-radius:45% 45% 14px 14px}
+    @keyframes icon-breathe{50%{transform:translateY(-8px);opacity:.7}}
+    .end-icon:nth-of-type(3){animation-name:icon-tilt}
+    @keyframes icon-tilt{50%{transform:rotate(45deg) translateY(-8px);opacity:.7}}
+    .light-sweep{
+      position:absolute;z-index:2;top:250px;left:-20%;width:140%;height:100px;
+      border-top:4px solid rgba(255,226,156,.9);border-radius:50%;
+      filter:drop-shadow(0 0 6px #e3a448) drop-shadow(0 0 14px #f9db9f);
+      transform:rotate(-3deg);
+      animation:sweep-move 6s ease-in-out infinite;
+    }
+    @keyframes sweep-move{
+      0%,12%{transform:translateX(-60%) rotate(-3deg);opacity:0}
+      28%,68%{transform:translateX(0) rotate(-3deg);opacity:1}
+      100%{transform:translateX(70%) rotate(-3deg);opacity:0}
+    }
+    .end-copy{
+      position:absolute;z-index:4;left:0;right:0;bottom:40px;
+      text-align:center;animation:fade-up 1s 1s both;
+    }
+    .end-copy h3{font-size:26px;font-weight:800;color:var(--ink);letter-spacing:1px;margin:0}
+    .end-copy p{margin:8px 0 0;color:var(--ink-soft);font-size:12px}
+    .end-copy button{
+      margin-top:14px;background:none;color:var(--gold-deep);
+      font:inherit;font-size:12px;cursor:pointer;text-decoration:underline;
+      border:none;
+    }
+
+    /* White flash */
+    .white-flash{
+      position:fixed;inset:0;z-index:500;pointer-events:none;overflow:hidden;
+      background:radial-gradient(circle at 50% 50%,#fff 0 8%,rgba(255,255,255,.97) 21%,rgba(255,255,255,.74) 45%,transparent 72%);
+      clip-path:circle(0 at 50% 50%);
+      animation:flash-expand 1s cubic-bezier(.18,.72,.18,1) forwards;
+    }
+    .white-flash::before{
+      content:'';position:absolute;inset:-30%;
+      background:conic-gradient(from 0deg at 50% 50%,rgba(255,255,255,.95),transparent 8%,rgba(255,255,255,.75) 16%,transparent 25%,rgba(255,255,255,.9) 35%,transparent 45%,rgba(255,255,255,.7) 57%,transparent 68%,rgba(255,255,255,.92) 78%,transparent 89%,rgba(255,255,255,.8));
+      animation:flash-spin .7s linear infinite;
+    }
+    @keyframes flash-expand{
+      0%{clip-path:circle(0 at 50% 50%);opacity:0}
+      8%{opacity:1}
+      70%{clip-path:circle(150% at 50% 50%);opacity:1}
+      100%{clip-path:circle(150% at 50% 50%);opacity:0}
+    }
+    @keyframes flash-spin{to{transform:rotate(135deg)}}
+
+    /* Page mode + slide transitions */
+    body.page-active{overflow:hidden}
+    body.page-active>.hero,body.page-active>.section,body.page-active>.quality-loop,body.page-active>.footer{display:none}
+    .modal.page-mode{padding:0;background:var(--bg);backdrop-filter:none;transition:opacity .15s}
+    .modal.page-mode .modal-box{
+      width:100%;height:100vh;max-height:none;border:0;border-radius:0;padding:0;box-shadow:none;
+      background:var(--bg);overflow-y:auto;
+      transform:translateX(100%);opacity:0;
+      transition:transform .55s cubic-bezier(.16,1,.3,1),opacity .4s;
+    }
+    .modal.page-mode.opening .modal-box{transform:none;opacity:1}
+    .modal.page-mode.closing .modal-box{transform:translateX(-30%);opacity:0;transition:transform .35s cubic-bezier(.55,0,1,.45),opacity .3s}
+    .modal.page-mode .modal-header{
+      transform:translateY(-20px);opacity:0;
+      transition:transform .5s .15s cubic-bezier(.16,1,.3,1),opacity .5s .15s;
+    }
+    .modal.page-mode.opening .modal-header{transform:none;opacity:1}
+    .modal.page-mode .modal-body{
+      transform:translateY(30px);opacity:0;
+      transition:transform .55s .2s cubic-bezier(.16,1,.3,1),opacity .55s .2s;
+    }
+    .modal.page-mode.opening .modal-body{transform:none;opacity:1}
+
+    /* Page content swap animation */
+    .page-slide-in{animation:slide-in .5s cubic-bezier(.16,1,.3,1) both}
+    .page-slide-out{animation:slide-out .35s cubic-bezier(.55,0,1,.45) both}
+    @keyframes slide-in{from{opacity:0;transform:translateX(60px)}to{opacity:1;transform:none}}
+    @keyframes slide-out{from{opacity:1;transform:none}to{opacity:0;transform:translateX(-40px)}}
+
+    /* Section entrance animations */
+    .anim-fade{opacity:0;animation:fade-up .7s cubic-bezier(.16,1,.3,1) both}
+    .anim-fade-d1{animation-delay:.1s}
+    .anim-fade-d2{animation-delay:.2s}
+    .anim-fade-d3{animation-delay:.3s}
+    .anim-fade-d4{animation-delay:.4s}
+    .anim-fade-d5{animation-delay:.5s}
+    .anim-stagger > *{opacity:0;animation:fade-up .5s cubic-bezier(.16,1,.3,1) both}
+    .anim-stagger > *:nth-child(1){animation-delay:.05s}
+    .anim-stagger > *:nth-child(2){animation-delay:.12s}
+    .anim-stagger > *:nth-child(3){animation-delay:.19s}
+    .anim-stagger > *:nth-child(4){animation-delay:.26s}
+    .anim-stagger > *:nth-child(5){animation-delay:.33s}
+    .anim-stagger > *:nth-child(6){animation-delay:.4s}
+    .anim-stagger > *:nth-child(7){animation-delay:.47s}
+    .anim-stagger > *:nth-child(8){animation-delay:.54s}
+
+    /* Responsive */
+    @media(max-width:900px){
+      .modules-grid{grid-template-columns:1fr}
+      .cap-grid{grid-template-columns:1fr 1fr}
+      .detail-layout{grid-template-columns:1fr}
+      .detail-side{position:static;grid-template-columns:repeat(2,1fr)}
+      .loop-path{grid-template-columns:1fr 1fr;gap:28px}
+      .loop-path::before{display:none}
+      .loop-step{padding-right:0;padding-top:32px}
+      .cta-section{padding:50px 30px}
+      .hero-cat{transform:scale(.7)}
+      .network-svg{display:none}
+    }
+    @media(max-width:600px){
+      .cap-grid{grid-template-columns:1fr}
+      .ending-stage{height:500px}
+      .end-icon{transform:scale(.7)}
+      .end-links{display:none}
+      .topbar{padding:12px 16px}
+      .brand{font-size:13px}
+      .hero{min-height:100svh}
+    }
+  </style>
+</head>
+<body>
+  <div class="noise"></div>
+  <div class="light-trail-global"></div>
+  <canvas id="particles"></canvas>
+
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="brand">SEARCH<span>CLAW</span><b>AI WORKER</b></div>
+    <div class="status-pill"><i></i>系统运行中</div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero" id="hero">
+    <div class="icon-network">
+      <svg class="network-svg" viewBox="0 0 900 600" aria-hidden="true">
+        <!-- Connection lines -->
+        <line x1="450" y1="300" x2="180" y2="120"/>
+        <line x1="450" y1="300" x2="720" y2="100"/>
+        <line x1="450" y1="300" x2="160" y2="480"/>
+        <line x1="450" y1="300" x2="450" y2="520"/>
+        <line x1="450" y1="300" x2="740" y2="500"/>
+        <line x1="450" y1="300" x2="680" y2="300"/>
+        <!-- Icons -->
+        <circle class="net-icon" cx="180" cy="120" r="28" stroke-width="2"/>
+        <text class="net-icon" x="170" y="125" font-size="16" stroke="none" fill="var(--gold)" opacity=".7">✎</text>
+
+        <rect class="net-icon" x="690" y="72" width="60" height="56" rx="8" stroke-width="2"/>
+        <line class="net-icon" x1="705" y1="92" x2="735" y2="92" stroke-width="1.5"/>
+        <line class="net-icon" x1="705" y1="104" x2="730" y2="104" stroke-width="1.5"/>
+        <line class="net-icon" x1="705" y1="116" x2="720" y2="116" stroke-width="1.5"/>
+
+        <polygon class="net-icon" points="160,452 188,480 160,508 132,480" stroke-width="2"/>
+        <text class="net-icon" x="150" y="485" font-size="14" stroke="none" fill="var(--gold)" opacity=".7">AB</text>
+
+        <rect class="net-icon" x="422" y="492" width="56" height="68" rx="6" stroke-width="2"/>
+        <line class="net-icon" x1="436" y1="516" x2="464" y2="516" stroke-width="1.5"/>
+        <line class="net-icon" x1="436" y1="528" x2="460" y2="528" stroke-width="1.5"/>
+        <line class="net-icon" x1="436" y1="540" x2="455" y2="540" stroke-width="1.5"/>
+
+        <rect class="net-icon" x="712" y="472" width="56" height="56" rx="10" stroke-width="2"/>
+
+        <path class="net-icon" d="M660,272 L700,272 L700,328 L660,328 Z" stroke-width="2"/>
+        <circle class="net-icon" cx="680" cy="286" r="8" stroke-width="1.5"/>
+      </svg>
+    </div>
+
+    <!-- Cat mascot -->
+    <div class="hero-cat">
+      <div class="cat-head">
+        <div class="cat-ear l"></div>
+        <div class="cat-ear r"></div>
+        <div class="cat-face"></div>
+        <div class="cat-mouth"></div>
+      </div>
+      <div class="cat-body"></div>
+      <div class="cat-tail"></div>
+      <div class="cat-paw l"></div>
+      <div class="cat-paw r"></div>
+    </div>
+
+    <div class="hero-content">
+      <div class="hero-kicker">THE SEARCH QUALITY COPILOT</div>
+      <h1 class="hero-title">让每一次<br><span class="grad">搜索决策更聪明</span></h1>
+      <p class="hero-sub">SEARCHCLAW 是面向大搜业务的 <strong>AI 智能工作助手</strong>。从即时求助，到问题沉淀，再到主动巡检，让搜索质量的改进形成持续进化的闭环。</p>
+      <div class="hero-actions">
+        <button class="btn btn-primary btn-icon" onclick="openPage('智能对话')"><span>▶</span> 开始演示</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('modules').scrollIntoView({behavior:'smooth'})">探索能力 ↓</button>
+      </div>
+    </div>
+
+    <div class="scroll-hint">SCROLL TO EXPLORE</div>
+  </section>
+
+  <!-- Capabilities -->
+  <section class="section" id="modules">
+    <div class="section-head">
+      <div class="section-eyebrow">01 · CAPABILITY MAP</div>
+      <h2 class="section-title">从"被动回答"到<br>"主动发现"</h2>
+      <p class="section-desc">三套能力彼此联通。每一个发现，都能被追溯、被复核，并成为下一次更精准判断的依据。</p>
+    </div>
+    <div class="modules-grid">
+      <div class="mod-card" onclick="openPage('智能对话')">
+        <span class="mod-num">01 — CONVERSATION</span>
+        <h3 class="mod-title">智能对话</h3>
+        <p class="mod-desc">用自然语言调动数据、日志、BI 和飞书协作；从一条线索，快速得到可执行的诊断结论。</p>
+        <div class="mod-arrow">进入对话空间 <b>→</b></div>
+      </div>
+      <div class="mod-card" onclick="openPage('案例管理')">
+        <span class="mod-num">02 — CASE LIBRARY</span>
+        <h3 class="mod-title">案例管理</h3>
+        <p class="mod-desc">将 QA、IQ 与 AI 排障结果沉淀为统一台账，让自动诊断与人工复核共同构成可信资产。</p>
+        <div class="mod-arrow">打开案例库 <b>→</b></div>
+      </div>
+      <div class="mod-card" onclick="openPage('线上巡检')">
+        <span class="mod-num">03 — INSPECTION</span>
+        <h3 class="mod-title">线上巡检</h3>
+        <p class="mod-desc">按频次自动评测搜索质量，定位异常、解释原因、支持人工修正，把问题发现前移。</p>
+        <div class="mod-arrow">启动巡检任务 <b>→</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quality Loop -->
+  <section class="section quality-loop">
+    <div class="section-head">
+      <div class="section-eyebrow">02 · QUALITY LOOP</div>
+      <h2 class="section-title">让质量，成为一个<br>会自我完善的系统</h2>
+    </div>
+    <div class="loop-path">
+      <div class="loop-step">
+        <span class="loop-step-label">01</span>
+        <span class="loop-step-title">发起问题</span>
+        <p class="loop-step-desc">通过自然语言、截图或 IQ 链接输入线索。</p>
+      </div>
+      <div class="loop-step">
+        <span class="loop-step-label">02</span>
+        <span class="loop-step-title">AI 深度诊断</span>
+        <p class="loop-step-desc">检索真实数据与日志，输出异常判断及原因。</p>
+      </div>
+      <div class="loop-step">
+        <span class="loop-step-label">03</span>
+        <span class="loop-step-title">沉淀为案例</span>
+        <p class="loop-step-desc">统一管理排障过程、结论和问题标签。</p>
+      </div>
+      <div class="loop-step">
+        <span class="loop-step-label">04</span>
+        <span class="loop-step-title">线上主动巡检</span>
+        <p class="loop-step-desc">自动抽样执行，持续扩大质量覆盖面。</p>
+      </div>
+      <div class="loop-step">
+        <span class="loop-step-label">05</span>
+        <span class="loop-step-title">人工复核优化</span>
+        <p class="loop-step-desc">纠正判断并回流结果，让系统持续进化。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="section">
+    <div class="cta-section">
+      <div class="section-eyebrow">SEARCH QUALITY, IN MOTION</div>
+      <h2 class="cta-title">不只是解决问题，<br>更让问题不再发生</h2>
+      <p class="cta-desc">每个模块都可独立使用，也能沿同一条数据链路自然衔接。点击开始，进入 SEARCHCLAW 的演示场景。</p>
+      <button class="btn btn-primary btn-icon" onclick="openPage('线上巡检')"><span>▶</span> 开始巡检演示</button>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <span>© 2026 SEARCHCLAW / AI INTELLIGENCE</span>
+    <span>DESIGNED FOR SEARCH QUALITY</span>
+  </footer>
+
+  <!-- Modal -->
+  <div class="modal" id="modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-title">产品演示</h3>
+        <button class="btn-back" onclick="closePage()">← 返回</button>
+      </div>
+      <div class="modal-body">
+        <div class="screen" id="screen"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== Particles =====
+    (function(){
+      const c=document.getElementById('particles'),ctx=c.getContext('2d');
+      let w,h,pts=[];
+      function resize(){w=c.width=window.innerWidth;h=c.height=window.innerHeight;pts=[];
+        const n=Math.min(60,Math.floor(w*h/18000));
+        for(let i=0;i<n;i++) pts.push({x:Math.random()*w,y:Math.random()*h,r:Math.random()*1.8+.5,
+          vx:(Math.random()-.5)*.25,vy:(Math.random()-.5)*.25,o:Math.random()*.25+.08});
+      }
+      function draw(){
+        ctx.clearRect(0,0,w,h);
+        for(const p of pts){
+          p.x+=p.vx;p.y+=p.vy;
+          if(p.x<0)p.x=w;if(p.x>w)p.x=0;if(p.y<0)p.y=h;if(p.y>h)p.y=0;
+          ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+          ctx.fillStyle=`rgba(196,108,29,${p.o})`;ctx.fill();
+        }
+        // draw connections
+        for(let i=0;i<pts.length;i++){
+          for(let j=i+1;j<pts.length;j++){
+            const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);
+            if(d<150){
+              ctx.beginPath();ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(pts[j].x,pts[j].y);
+              ctx.strokeStyle=`rgba(196,108,29,${.06*(1-d/150)})`;ctx.lineWidth=.6;ctx.stroke();
+            }
+          }
+        }
+        requestAnimationFrame(draw);
+      }
+      window.addEventListener('resize',resize);resize();draw();
+    })();
+
+    // ===== Data =====
+    const caps=[
+      ['数据查询','通过自然语言获取 Hive、日志与指标数据','demo-assets/data-query.png'],
+      ['BI 表格查询','快速解读 OKR、趋势、漏斗与留存表现','demo-assets/bi-query.png'],
+      ['定时任务','设置每日、每周或指定时间的自动查询','demo-assets/scheduled-task.png'],
+      ['AB 实验分析','查询实验趋势、显著性与置信区间','demo-assets/ab-analysis.png'],
+      ['飞书集成','读取、编辑文档、多维表格及附件内容','demo-assets/feishu-integration.png'],
+      ['搜索排障','分析未召回、误召回与排序异常问题','demo-assets/search-triage.png']
+    ];
+
+    function openPage(name){
+      const m=document.getElementById('modal'),s=document.getElementById('screen');
+      document.getElementById('modal-title').textContent=name+' · 演示';
+      document.body.classList.add('page-active');
+      m.classList.add('open','page-mode','opening');
+      // Trigger animation
+      requestAnimationFrame(()=>{
+        s.classList.add('page-slide-in');
+      });
+      if(name==='智能对话'){
+        s.className='screen page-slide-in';
+        s.innerHTML=`
+          <div style="text-align:center;padding:10px 0 20px" class="anim-fade">
+            <div class="section-eyebrow">01 / INTELLIGENT CONVERSATION</div>
+            <h3 style="font-size:28px;font-weight:800;color:var(--ink);margin:6px 0">一句话，调动完整的业务能力</h3>
+            <p style="font-size:14px;color:var(--ink-soft);max-width:420px;margin:0 auto">从数据取证到问题排障，所有结果都回到同一个对话窗口。</p>
+          </div>
+          <div class="cap-grid anim-stagger">${caps.map((c,i)=>`
+            <div class="cap-item" onclick="showCap(${i})">
+              <img src="${c[2]}" alt="${c[0]}">
+              <div class="cap-info"><div><b>${c[0]}</b><small>0${i+1} / CAPABILITY</small></div><span>↗</span></div>
+            </div>`).join('')}
+          </div>
+          <div class="next-module anim-fade anim-fade-d5"><span>完成智能对话探索后，进入案例管理</span>
+            <button class="btn btn-primary btn-icon" onclick="openPage('案例管理')"><span>→</span> 下一板块</button></div>`;
+      }else if(name==='案例管理'){
+        s.className='screen page-slide-in';s.innerHTML=caseTransitionHTML();
+        setTimeout(()=>{if(m.classList.contains('open'))showCaseDash()},1400);
+      }else{
+        s.className='screen page-slide-in';s.innerHTML=inspTransitionHTML();
+        setTimeout(()=>{if(m.classList.contains('open'))showInspDash()},3200);
+      }
+    }
+
+    function caseTransitionHTML(){
+      return `<div class="case-trans">
+        <div class="case-orbs">
+          <svg viewBox="0 0 680 340"><line x1="130" y1="55" x2="330" y2="165"/><line x1="550" y1="55" x2="350" y2="165"/><line x1="140" y1="280" x2="330" y2="175"/><line x1="540" y1="280" x2="350" y2="175"/></svg>
+          <div class="source-node qa"><i>Q</i><div>QA<small>质量问题</small></div></div>
+          <div class="source-node iq"><i>I</i><div>IQ<small>线上反馈</small></div></div>
+          <div class="source-node insp"><i>⌁</i><div>巡检<small>自动发现</small></div></div>
+          <div class="source-node cust"><i>+</i><div>自定义<small>人工录入</small></div></div>
+          <div class="center-orb"><span>⌘</span></div>
+        </div>
+        <h3 style="font-size:28px;font-weight:800;color:var(--ink);margin-top:18px;position:relative;z-index:1">CASE LIBRARY</h3>
+        <p style="color:var(--ink-soft);font-size:13px;position:relative;z-index:1">四类问题来源，正在汇聚为统一的案例资产</p>
+      </div>`;
+    }
+
+    function inspTransitionHTML(){
+      return `<div class="insp-trans">
+        <div class="insp-network">
+          <svg viewBox="0 0 720 360"><line x1="105" y1="53" x2="344" y2="161"/><line x1="615" y1="53" x2="376" y2="161"/><line x1="125" y1="305" x2="344" y2="194"/><line x1="595" y1="305" x2="376" y2="194"/></svg>
+          <div class="scan-node s1">站点 / 页面<small>巡检范围</small></div>
+          <div class="scan-node s2">选词范围<small>抽样词池</small></div>
+          <div class="scan-node s3">测试用户<small>CID 与人群</small></div>
+          <div class="scan-node s4">关注问题<small>异常类型</small></div>
+          <div class="scan-ring"><b>INSPECT</b><span>自动诊断中</span></div>
+        </div>
+        <div class="insp-welcome">
+          <div class="section-eyebrow">SEARCH QUALITY AUTO-PILOT</div>
+          <h3>欢迎进入线上巡检</h3>
+          <p>正在汇聚巡检配置并启动智能诊断</p>
+          <div class="insp-bar"></div>
+        </div>
+      </div>`;
+    }
+
+    function showCap(i){
+      const c=caps[i],ni=(i+1)%caps.length,n=caps[ni];
+      document.getElementById('modal-title').textContent='智能对话 · '+c[0];
+      const s=document.getElementById('screen');
+      // Slide out current, then slide in new
+      s.classList.add('page-slide-out');
+      setTimeout(()=>{
+        s.className='screen page-slide-in';
+        s.innerHTML=`
+        <div style="display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:18px" class="anim-fade">
+          <div><div class="section-eyebrow">INTELLIGENT CONVERSATION / 0${i+1}</div><h3 style="font-size:26px;font-weight:800;color:var(--ink);margin:4px 0">${c[0]}</h3></div>
+          <p style="font-size:13px;color:var(--ink-soft);max-width:380px;margin:0">${c[1]}</p>
+        </div>
+        <div class="detail-layout">
+          <div class="detail-main anim-fade anim-fade-d2"><img src="${c[2]}" alt="${c[0]}"></div>
+          <aside class="detail-side anim-stagger">
+            <h4>NAVIGATE</h4>
+            ${caps.map((x,j)=>`<button class="side-btn ${j===i?'active':''}" onclick="showCap(${j})"><img src="${x[2]}" alt=""><div><b>${x[0]}</b><small>${j===i?'当前':'点击进入'}</small></div></button>`).join('')}
+          </aside>
+        </div>
+        <div class="detail-footer anim-fade anim-fade-d4">
+          <button class="btn-ghost" style="padding:10px 16px;border-radius:8px;font-size:12px;cursor:pointer;border:1px solid #ead1ad;color:var(--gold-deep);background:transparent;font:inherit" onclick="openPage('智能对话')">← 返回</button>
+          <span class="detail-progress">${String(i+1).padStart(2,'0')} / 06</span>
+          <button class="btn-next" onclick="showCap(${ni})"><div><small>NEXT</small><strong>${n[0]}</strong></div><span>→</span></button>
+        </div>`;
+      },360);
+    }
+
+    function showCaseDash(){
+      const m=document.getElementById('modal');if(!m.classList.contains('open'))return;
+      const s=document.getElementById('screen');
+      s.classList.add('page-slide-out');
+      setTimeout(()=>{
+        s.className='screen page-slide-in';
+        s.innerHTML=`
+        <div class="dash-top">
+          <div class="anim-fade">
+            <div class="section-eyebrow">02 / CASE LIBRARY</div>
+            <h3 class="dash-title">案例管理：让每次诊断都有归处</h3>
+            <p style="font-size:13px;color:var(--ink-soft);max-width:500px;line-height:1.7;margin:0">QA、IQ、巡检与自定义问题统一汇聚，自动排障结果与人工复核共同构成可追溯的质量资产。</p>
+          </div>
+          <div class="dash-stats anim-fade anim-fade-d2">
+            <div class="dash-stat"><b>1,284</b>沉淀案例</div>
+            <div class="dash-stat"><b>94.6%</b>复核通过</div>
+          </div>
+        </div>
+        <div class="video-wrap anim-fade anim-fade-d3">
+          <video id="case-video" controls muted loop playsinline preload="metadata" poster=""><source src="demo-assets/case-management-demo.mp4" type="video/mp4"></video>
+        </div>
+        <div class="anim-fade anim-fade-d4" style="text-align:center"><button class="video-play-btn" onclick="playVideo(event,'case-video')"><span>▶</span> 播放演示视频</button></div>
+        <p class="video-caption anim-fade anim-fade-d4">案例管理演示 · 42 秒</p>
+        <div class="next-module anim-fade anim-fade-d5"><span>问题沉淀完成，继续进入自动化线上巡检</span>
+          <button class="btn btn-primary btn-icon" onclick="openPage('线上巡检')"><span>→</span> 下一板块</button></div>`;
+      },360);
+    }
+
+    function showInspDash(){
+      const m=document.getElementById('modal');if(!m.classList.contains('open'))return;
+      const s=document.getElementById('screen');
+      s.classList.add('page-slide-out');
+      setTimeout(()=>{
+        s.className='screen page-slide-in';
+        s.innerHTML=`
+        <div class="dash-top">
+          <div class="anim-fade">
+            <div class="section-eyebrow">03 / ONLINE INSPECTION</div>
+            <h3 class="dash-title">线上巡检：让问题被主动发现</h3>
+            <p style="font-size:13px;color:var(--ink-soft);max-width:500px;line-height:1.7;margin:0">系统按范围、词池、测试用户与关注问题发起巡检；结果将自动进入诊断与复核流程。</p>
+          </div>
+          <div class="dash-stats anim-fade anim-fade-d2">
+            <div class="dash-stat"><b>91.3%</b>本轮通过</div>
+            <div class="dash-stat"><b>68</b>已评测词</div>
+          </div>
+        </div>
+        <div class="video-wrap anim-fade anim-fade-d3">
+          <video id="insp-video" controls muted playsinline preload="metadata" onended="showEnding()"><source src="demo-assets/online-inspection-demo.mp4" type="video/mp4"></video>
+        </div>
+        <div class="anim-fade anim-fade-d4" style="text-align:center"><button class="video-play-btn" onclick="playVideo(event,'insp-video')"><span>▶</span> 播放演示视频</button></div>
+        <p class="video-caption anim-fade anim-fade-d4">线上巡检演示 · 67 秒</p>
+        <div class="next-module anim-fade anim-fade-d5"><span>巡检完成后，异常案例自动回流到案例管理</span>
+          <button class="btn btn-primary btn-icon" onclick="showEnding()"><span>→</span> 进入结束页</button></div>`;
+      },360);
+    }
+
+    function playVideo(e,id){
+      const v=document.getElementById(id);
+      if(v){v.play();e.target.closest('button').style.display='none'}
+    }
+
+    function showEnding(){
+      const m=document.getElementById('modal');if(!m.classList.contains('open'))return;
+      document.getElementById('modal-title').textContent='SEARCHCLAW · 演示结束';
+      const s=document.getElementById('screen');
+      s.classList.add('page-slide-out');
+      setTimeout(()=>{
+        s.className='screen ending page-slide-in';
+        s.style.padding='0';s.style.background='none';
+        s.innerHTML=`<div class="ending-stage">
+        <svg class="end-links" viewBox="0 0 700 360"><path d="M150,90 C250,150 285,165 350,177"/><path d="M550,88 C460,145 415,165 350,177"/><path d="M200,260 C275,215 305,195 350,177"/><path d="M500,255 C430,215 400,195 350,177"/></svg>
+        <div class="end-icon"><span>✎</span></div>
+        <div class="end-icon"><span></span></div>
+        <div class="end-icon"><span>AB</span></div>
+        <div class="end-icon"><span>▤</span></div>
+        <div class="light-sweep"></div>
+        <div class="end-copy">
+          <h3>让搜索质量，持续向前</h3>
+          <p>SEARCHCLAW · AI 智能助手</p>
+          <button onclick="closePage()">返回欢迎页</button>
+        </div>
+      </div>`;
+      },360);
+    }
+
+    function closePage(){
+      const m=document.getElementById('modal');
+      m.classList.add('closing');
+      setTimeout(()=>{
+        m.classList.remove('open','page-mode','opening','closing');
+        document.body.classList.remove('page-active');
+        window.scrollTo({top:0,behavior:'smooth'});
+      },350);
+    }
+
+    document.addEventListener('keydown',e=>{if(e.key==='Escape')closePage()});
+  </script>
+</body>
+</html>
