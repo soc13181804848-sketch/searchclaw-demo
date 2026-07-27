@@ -499,8 +499,8 @@
     @keyframes orb-pulse{50%{transform:translate(-50%,-50%) translateY(-10px) rotate(4deg)}}
 
     /* Dashboard */
-    .dash-top{display:flex;justify-content:space-between;gap:20px;align-items:start}
-    .dash-title{font-size:28px;font-weight:800;color:var(--ink);margin:4px 0}
+    .dash-header{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:20px}
+    .dash-title{font-size:32px;font-weight:800;color:var(--ink);margin:4px 0}
     .dash-stats{display:flex;gap:10px;flex-shrink:0}
     .dash-stat{
       padding:10px 14px;background:rgba(255,255,255,.7);border-radius:10px;
@@ -1285,11 +1285,10 @@
       setTimeout(()=>{
         s.className='screen page-slide-in';
         s.innerHTML=`
-        <div class="dash-top">
+        <div class="dash-header">
           <div class="anim-fade">
             <div class="section-eyebrow">02 / CASE LIBRARY</div>
-            <h3 class="dash-title">案例管理：让每次诊断都有归处</h3>
-            <p style="font-size:13px;color:var(--ink-soft);max-width:500px;line-height:1.7;margin:0">QA、IQ、巡检与自定义问题统一汇聚，自动排障结果与人工复核共同构成可追溯的质量资产。</p>
+            <h3 class="dash-title">案例管理</h3>
           </div>
           <div class="dash-stats anim-fade anim-fade-d2">
             <div class="dash-stat"><b>1,284</b>沉淀案例</div>
@@ -1297,11 +1296,10 @@
           </div>
         </div>
         <div class="video-wrap anim-fade anim-fade-d3">
-          <video id="case-video" controls muted loop playsinline preload="metadata" poster=""><source src="demo-assets/case-management-demo.mp4" type="video/mp4"></video>
+          <video id="case-video" controls muted loop playsinline preload="metadata"><source src="demo-assets/case-management-demo.mp4" type="video/mp4"></video>
         </div>
         <div class="anim-fade anim-fade-d4" style="text-align:center"><button class="video-play-btn" onclick="playVideo(event,'case-video')"><span>▶</span> 播放演示视频</button></div>
-        <p class="video-caption anim-fade anim-fade-d4">案例管理演示 · 42 秒</p>
-        <div class="next-module anim-fade anim-fade-d5"><span>问题沉淀完成，继续进入自动化线上巡检</span>
+        <div class="next-module anim-fade anim-fade-d5"><span>完成案例管理演示后，进入线上巡检</span>
           <button class="btn btn-primary btn-icon" onclick="openPage('线上巡检')"><span>→</span> 下一板块</button></div>`;
       },360);
     }
@@ -1313,11 +1311,10 @@
       setTimeout(()=>{
         s.className='screen page-slide-in';
         s.innerHTML=`
-        <div class="dash-top">
+        <div class="dash-header">
           <div class="anim-fade">
             <div class="section-eyebrow">03 / ONLINE INSPECTION</div>
-            <h3 class="dash-title">线上巡检：让问题被主动发现</h3>
-            <p style="font-size:13px;color:var(--ink-soft);max-width:500px;line-height:1.7;margin:0">系统按范围、词池、测试用户与关注问题发起巡检；结果将自动进入诊断与复核流程。</p>
+            <h3 class="dash-title">线上巡检</h3>
           </div>
           <div class="dash-stats anim-fade anim-fade-d2">
             <div class="dash-stat"><b>91.3%</b>本轮通过</div>
@@ -1328,8 +1325,7 @@
           <video id="insp-video" controls muted playsinline preload="metadata" onended="showEnding()"><source src="demo-assets/online-inspection-demo.mp4" type="video/mp4"></video>
         </div>
         <div class="anim-fade anim-fade-d4" style="text-align:center"><button class="video-play-btn" onclick="playVideo(event,'insp-video')"><span>▶</span> 播放演示视频</button></div>
-        <p class="video-caption anim-fade anim-fade-d4">线上巡检演示 · 67 秒</p>
-        <div class="next-module anim-fade anim-fade-d5"><span>巡检完成后，异常案例自动回流到案例管理</span>
+        <div class="next-module anim-fade anim-fade-d5"><span>巡检完成后进入结束页</span>
           <button class="btn btn-primary btn-icon" onclick="showEnding()"><span>→</span> 进入结束页</button></div>`;
       },360);
     }
